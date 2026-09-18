@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>新竹 → 嘉義｜2026/9/19–9/20 景點互動地圖</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@10.10.0/ol.css">
+<script src="https://cdn.jsdelivr.net/npm/ol@10.10.0/dist/ol.js"></script>
+<style>
+html,body,#map{height:100%;margin:0;font-family:system-ui,-apple-system,"Noto Sans TC",sans-serif}
+body{overflow:hidden;background:#eef2f5}
+#map{width:100%;touch-action:none}
+.topbar{position:absolute;z-index:10;top:12px;left:50%;transform:translateX(-50%);width:min(720px,calc(100% - 24px));background:rgba(255,255,255,.94);backdrop-filter:blur(12px);border-radius:16px;padding:10px 12px;box-shadow:0 5px 20px #0002;box-sizing:border-box}
+.title{font-weight:800;font-size:16px} .sub{font-size:12px;color:#555;margin-top:2px}
+.filters{display:flex;gap:6px;overflow:auto;margin-top:8px;scrollbar-width:none} .filters::-webkit-scrollbar{display:none}
+.filters button{white-space:nowrap;border:0;border-radius:999px;padding:7px 10px;background:#edf0f3;font-weight:650}
+.filters button.active{background:#222;color:#fff}
+.popup{position:absolute;background:white;border-radius:14px;box-shadow:0 6px 25px #0003;padding:13px;width:min(300px,calc(100vw - 42px));transform:translate(-50%,-100%);margin-top:-13px;display:none}
+.popup:after{content:"";position:absolute;left:50%;bottom:-8px;border:8px solid transparent;border-top-color:white;border-bottom:0}
+.popup b{display:block;font-size:15px;line-height:1.35;padding-right:20px} .popup .meta{font-size:12px;color:#666;margin:5px 0} .popup .desc{font-size:13px;line-height:1.45}
+.popup a{display:inline-block;margin-top:9px;text-decoration:none;background:#111;color:#fff;padding:8px 11px;border-radius:9px;font-size:13px;font-weight:700}
+.close{position:absolute;right:9px;top:7px;border:0;background:transparent;font-size:20px}
+.legend{position:absolute;z-index:9;left:10px;bottom:12px;background:#fffffff0;border-radius:12px;padding:8px 10px;font-size:11px;box-shadow:0 3px 14px #0002}
+.ol-zoom{top:auto!important;left:auto!important;right:10px!important;bottom:12px!important}
+.ol-zoom button{width:38px!important;height:38px!important;font-size:22px!important}
+.ol-attribution{font-size:10px}
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div class="topbar"><div class="title">新竹 → 嘉義｜這週末景點</div><div class="sub">2026/9/19–9/20 · 點標記看資訊，再開 Google Maps 研究路線</div><div class="filters" id="filters"></div></div>
+<div class="legend">拖曳・慣性縮放・雙指縮放｜OpenLayers</div>
+<div id="popup" class="popup"><button class="close" id="close">×</button><b id="pn"></b><div class="meta" id="pm"></div><div class="desc" id="pd"></div><a id="plink" target="_blank" rel="noopener">Google Maps →</a></div>
+<script>
+const places=[{"name": "新竹市立動物園｜90週年 Zoo My Way", "city": "新竹", "desc": "9/20 最後一天", "type": "本週活動", "lon": 120.9796, "lat": 24.8007, "q": "新竹市立動物園"}, {"name": "東門城護城河｜竹風好市集", "city": "新竹", "desc": "9/19–20", "type": "本週活動", "lon": 120.9706, "lat": 24.8038, "q": "新竹東門城"}, {"name": "新瓦屋｜月兔小夜曲親子 DIY", "city": "新竹", "desc": "9/19，中秋親子活動", "type": "本週活動", "lon": 121.0263, "lat": 24.808, "q": "新瓦屋客家文化保存區"}, {"name": "后豐鐵馬道", "city": "台中", "desc": "親子單車、隧道、鐵橋", "type": "單車", "lon": 120.7168, "lat": 24.2675, "q": "后豐鐵馬道"}, {"name": "潭雅神綠園道", "city": "台中", "desc": "平緩、適合親子休閒騎", "type": "單車", "lon": 120.7065, "lat": 24.2145, "q": "潭雅神綠園道"}, {"name": "臺中國家歌劇院｜NTT劇院展開×大兵市集", "city": "台中", "desc": "9/19–20", "type": "本週活動", "lon": 120.6401, "lat": 24.1628, "q": "臺中國家歌劇院"}, {"name": "PARK2 草悟廣場｜BORN WILD 野自然市集", "city": "台中", "desc": "9/19–20", "type": "本週活動", "lon": 120.6635, "lat": 24.1513, "q": "PARK2草悟廣場"}, {"name": "國立自然科學博物館｜鯨掘特展", "city": "台中", "desc": "9/20 最後一天", "type": "本週活動", "lon": 120.666, "lat": 24.1572, "q": "國立自然科學博物館"}, {"name": "田尾公路花園", "city": "彰化", "desc": "花園＋親子自行車", "type": "單車/風景", "lon": 120.5257, "lat": 23.9068, "q": "田尾公路花園"}, {"name": "古坑綠色隧道", "city": "雲林", "desc": "樹蔭、散步、親子", "type": "風景", "lon": 120.5583, "lat": 23.6462, "q": "古坑綠色隧道"}, {"name": "國立故宮博物院南部院區", "city": "嘉義", "desc": "親子、室內備案、湖景", "type": "景點", "lon": 120.2928, "lat": 23.4704, "q": "國立故宮博物院南部院區"}, {"name": "蒜頭糖廠蔗埕文化園區", "city": "嘉義", "desc": "糖廠、五分車、親子", "type": "景點", "lon": 120.297, "lat": 23.48, "q": "蒜頭糖廠蔗埕文化園區"}, {"name": "東石漁人碼頭｜2026 鰻魚節", "city": "嘉義", "desc": "9/20：市集、食魚教育、闖關、美食、夕陽", "type": "本週活動", "lon": 120.1353, "lat": 23.4584, "q": "東石漁人碼頭"}, {"name": "北香湖公園｜維尼布展／試燈", "city": "嘉義", "desc": "正式展期 9/25 起；本週末可作試燈候選點", "type": "嘉義晚上", "lon": 120.4357, "lat": 23.4919, "q": "北香湖公園"}];
+const palette={"本週活動":"#e53935","單車":"#1976d2","單車/風景":"#1976d2","風景":"#2e7d32","景點":"#6a1b9a","嘉義晚上":"#ef6c00"};
+const source=new ol.source.Vector();
+function makeFeature(p){
+ const f=new ol.Feature({geometry:new ol.geom.Point(ol.proj.fromLonLat([p.lon,p.lat])),...p});
+ f.setStyle(new ol.style.Style({
+   image:new ol.style.Circle({radius:9,fill:new ol.style.Fill({color:palette[p.type]||"#333"}),stroke:new ol.style.Stroke({color:"#fff",width:3})})
+ })); return f;
+}
+places.forEach(p=>source.addFeature(makeFeature(p)));
+const vector=new ol.layer.Vector({source,declutter:true});
+const base=new ol.layer.Tile({source:new ol.source.XYZ({
+ url:"https://{a-c}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+ attributions:'© OpenStreetMap contributors',
+ crossOrigin:"anonymous",
+ maxZoom:19
+})});
+const map=new ol.Map({
+ target:"map",layers:[base,vector],
+ view:new ol.View({center:ol.proj.fromLonLat([120.62,24.15]),zoom:8.2,minZoom:7,maxZoom:18,constrainResolution:false}),
+ controls:ol.control.defaults.defaults({rotate:false,zoom:true,attribution:true}),
+ interactions:ol.interaction.defaults.defaults({mouseWheelZoom:true,pinchZoom:true,dragPan:true})
+});
+const el=document.getElementById("popup");
+const overlay=new ol.Overlay({element:el,positioning:"bottom-center",stopEvent:true,autoPan:{animation:{duration:180},margin:60}});
+map.addOverlay(overlay);
+function show(f){
+ const p=f.getProperties(); document.getElementById("pn").textContent=p.name;
+ document.getElementById("pm").textContent=p.city+" · "+p.type;
+ document.getElementById("pd").textContent=p.desc;
+ document.getElementById("plink").href="https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(p.q);
+ overlay.setPosition(f.getGeometry().getCoordinates()); el.style.display="block";
+}
+map.on("singleclick",e=>{const f=map.forEachFeatureAtPixel(e.pixel,x=>x,{hitTolerance:8}); if(f)show(f); else{el.style.display="none";overlay.setPosition(undefined)}});
+map.on("pointermove",e=>{map.getTargetElement().style.cursor=map.hasFeatureAtPixel(e.pixel,{hitTolerance:5})?"pointer":""});
+document.getElementById("close").onclick=()=>{el.style.display="none";overlay.setPosition(undefined)};
+const types=["全部",...new Set(places.map(x=>x.type))];
+const filters=document.getElementById("filters");
+
+function styleFor(type){
+  return new ol.style.Style({
+    image:new ol.style.Circle({
+      radius:9,
+      fill:new ol.style.Fill({color:palette[type]||"#333"}),
+      stroke:new ol.style.Stroke({color:"#fff",width:3})
+    })
+  });
+}
+
+types.forEach((t,i)=>{
+  const b=document.createElement("button");
+  b.textContent=t;
+  if(i===0) b.classList.add("active");
+  b.addEventListener("click",()=>{
+    Array.from(filters.children).forEach(x=>x.classList.remove("active"));
+    b.classList.add("active");
+    source.getFeatures().forEach(f=>{
+      const visible=(t==="全部" || f.get("type")===t);
+      f.setStyle(visible ? styleFor(f.get("type")) : new ol.style.Style({}));
+    });
+    el.style.display="none";
+    overlay.setPosition(undefined);
+  });
+  filters.appendChild(b);
+});
+</script></body></html>
