@@ -13,24 +13,55 @@ body{overflow:hidden;background:#eef2f5}
 .topbar{position:absolute;z-index:10;top:12px;left:50%;transform:translateX(-50%);width:min(720px,calc(100% - 24px));background:rgba(255,255,255,.94);backdrop-filter:blur(12px);border-radius:16px;padding:10px 12px;box-shadow:0 5px 20px #0002;box-sizing:border-box}
 .title{font-weight:800;font-size:16px} .sub{font-size:12px;color:#555;margin-top:2px}
 .filters{display:flex;gap:6px;overflow:auto;margin-top:8px;scrollbar-width:none} .filters::-webkit-scrollbar{display:none}
-.filters button{white-space:nowrap;border:0;border-radius:999px;padding:7px 10px;background:#edf0f3;font-weight:650}
+.filters button{white-space:nowrap;border:0;border-radius:999px;padding:7px 10px;background:#edf0f3;font-weight:650;cursor:pointer}
 .filters button.active{background:#222;color:#fff}
-.popup{position:absolute;background:white;border-radius:14px;box-shadow:0 6px 25px #0003;padding:13px;width:min(300px,calc(100vw - 42px));transform:translate(-50%,-100%);margin-top:-13px;display:none}
+.popup{position:absolute;background:white;border-radius:14px;box-shadow:0 6px 25px #0003;padding:13px;width:min(300px,calc(100vw - 42px));transform:translate(-50%,-100%);margin-top:-13px;display:none;z-index:20}
 .popup:after{content:"";position:absolute;left:50%;bottom:-8px;border:8px solid transparent;border-top-color:white;border-bottom:0}
 .popup b{display:block;font-size:15px;line-height:1.35;padding-right:20px} .popup .meta{font-size:12px;color:#666;margin:5px 0} .popup .desc{font-size:13px;line-height:1.45}
 .popup a{display:inline-block;margin-top:9px;text-decoration:none;background:#111;color:#fff;padding:8px 11px;border-radius:9px;font-size:13px;font-weight:700}
-.close{position:absolute;right:9px;top:7px;border:0;background:transparent;font-size:20px}
+.close{position:absolute;right:9px;top:7px;border:0;background:transparent;font-size:20px;cursor:pointer}
 .legend{position:absolute;z-index:9;left:10px;bottom:12px;background:#fffffff0;border-radius:12px;padding:8px 10px;font-size:11px;box-shadow:0 3px 14px #0002}
-.ol-zoom{top:auto!important;left:auto!important;right:10px!important;bottom:12px!important}
+.ol-zoom{top:auto!important;left:auto!important;right:10px!important;bottom:64px!important}
 .ol-zoom button{width:38px!important;height:38px!important;font-size:22px!important}
 .ol-attribution{font-size:10px}
+
+/* 定位按鈕與呼吸燈浮層 */
+.locate-btn{position:absolute;right:10px;bottom:14px;z-index:9;width:38px;height:38px;border-radius:8px;background:#fff;border:none;box-shadow:0 2px 8px #0003;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#333;transition:all .2s ease}
+.locate-btn:hover{background:#f0f0f0}
+.locate-btn.active{color:#007aff;background:#eef6ff}
+.locate-btn svg{width:20px;height:20px}
+
+.location-marker{position:relative;width:20px;height:20px;pointer-events:auto;cursor:pointer}
+.location-dot{position:absolute;top:50%;left:50%;width:14px;height:14px;background:#007aff;border:2.5px solid #fff;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 6px rgba(0,122,255,.5);z-index:2}
+.location-pulse{position:absolute;top:50%;left:50%;width:14px;height:14px;background:rgba(0,122,255,.45);border-radius:50%;transform:translate(-50%,-50%);animation:pulse 2s infinite ease-out;z-index:1}
+
+@keyframes pulse{
+  0%{transform:translate(-50%,-50%) scale(1);opacity:0.9}
+  70%{transform:translate(-50%,-50%) scale(3.5);opacity:0.0}
+  100%{transform:translate(-50%,-50%) scale(3.5);opacity:0.0}
+}
 </style>
 </head>
 <body>
 <div id="map"></div>
 <div class="topbar"><div class="title">新竹 → 嘉義｜這週末景點</div><div class="sub">2026/9/19–9/20 · 點標記看資訊，再開 Google Maps 研究路線</div><div class="filters" id="filters"></div></div>
 <div class="legend">拖曳・慣性縮放・雙指縮放｜OpenLayers</div>
+
+<!-- 定位按鈕 -->
+<button class="locate-btn" id="locateBtn" title="定位當前位置" aria-label="定位當前位置">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
+  </svg>
+</button>
+
+<!-- 呼吸燈定位 DOM 標記 -->
+<div id="userLocationOverlay" class="location-marker" style="display:none" title="我的目前位置">
+  <div class="location-pulse"></div>
+  <div class="location-dot"></div>
+</div>
+
 <div id="popup" class="popup"><button class="close" id="close">×</button><b id="pn"></b><div class="meta" id="pm"></div><div class="desc" id="pd"></div><a id="plink" target="_blank" rel="noopener">Google Maps →</a></div>
+
 <script>
 const places=[{"name": "新竹市立動物園｜90週年 Zoo My Way", "city": "新竹", "desc": "9/20 最後一天", "type": "本週活動", "lon": 120.9796, "lat": 24.8007, "q": "新竹市立動物園"}, {"name": "東門城護城河｜竹風好市集", "city": "新竹", "desc": "9/19–20", "type": "本週活動", "lon": 120.9706, "lat": 24.8038, "q": "新竹東門城"}, {"name": "新瓦屋｜月兔小夜曲親子 DIY", "city": "新竹", "desc": "9/19，中秋親子活動", "type": "本週活動", "lon": 121.0263, "lat": 24.808, "q": "新瓦屋客家文化保存區"}, {"name": "后豐鐵馬道", "city": "台中", "desc": "親子單車、隧道、鐵橋", "type": "單車", "lon": 120.7168, "lat": 24.2675, "q": "后豐鐵馬道"}, {"name": "潭雅神綠園道", "city": "台中", "desc": "平緩、適合親子休閒騎", "type": "單車", "lon": 120.7065, "lat": 24.2145, "q": "潭雅神綠園道"}, {"name": "臺中國家歌劇院｜NTT劇院展開×大兵市集", "city": "台中", "desc": "9/19–20", "type": "本週活動", "lon": 120.6401, "lat": 24.1628, "q": "臺中國家歌劇院"}, {"name": "PARK2 草悟廣場｜BORN WILD 野自然市集", "city": "台中", "desc": "9/19–20", "type": "本週活動", "lon": 120.6635, "lat": 24.1513, "q": "PARK2草悟廣場"}, {"name": "國立自然科學博物館｜鯨掘特展", "city": "台中", "desc": "9/20 最後一天", "type": "本週活動", "lon": 120.666, "lat": 24.1572, "q": "國立自然科學博物館"}, {"name": "田尾公路花園", "city": "彰化", "desc": "花園＋親子自行車", "type": "單車/風景", "lon": 120.5257, "lat": 23.9068, "q": "田尾公路花園"}, {"name": "古坑綠色隧道", "city": "雲林", "desc": "樹蔭、散步、親子", "type": "風景", "lon": 120.5583, "lat": 23.6462, "q": "古坑綠色隧道"}, {"name": "國立故宮博物院南部院區", "city": "嘉義", "desc": "親子、室內備案、湖景", "type": "景點", "lon": 120.2928, "lat": 23.4704, "q": "國立故宮博物院南部院區"}, {"name": "蒜頭糖廠蔗埕文化園區", "city": "嘉義", "desc": "糖廠、五分車、親子", "type": "景點", "lon": 120.297, "lat": 23.48, "q": "蒜頭糖廠蔗埕文化園區"}, {"name": "東石漁人碼頭｜2026 鰻魚節", "city": "嘉義", "desc": "9/20：市集、食魚教育、闖關、美食、夕陽", "type": "本週活動", "lon": 120.1353, "lat": 23.4584, "q": "東石漁人碼頭"}, {"name": "北香湖公園｜維尼布展／試燈", "city": "嘉義", "desc": "正式展期 9/25 起；本週末可作試燈候選點", "type": "嘉義晚上", "lon": 120.4357, "lat": 23.4919, "q": "北香湖公園"}];
 const palette={"本週活動":"#e53935","單車":"#1976d2","單車/風景":"#1976d2","風景":"#2e7d32","景點":"#6a1b9a","嘉義晚上":"#ef6c00"};
@@ -43,6 +74,17 @@ function makeFeature(p){
 }
 places.forEach(p=>source.addFeature(makeFeature(p)));
 const vector=new ol.layer.Vector({source,declutter:true});
+
+// 精度範圍圖層
+const accuracySource=new ol.source.Vector();
+const accuracyVector=new ol.layer.Vector({
+  source:accuracySource,
+  style:new ol.style.Style({
+    fill:new ol.style.Fill({color:'rgba(0,122,255,0.08)'}),
+    stroke:new ol.style.Stroke({color:'rgba(0,122,255,0.4)',width:1.5,lineDash:[4,4]})
+  })
+});
+
 const base=new ol.layer.Tile({source:new ol.source.XYZ({
  url:"https://{a-c}.tile.openstreetmap.org/{z}/{x}/{y}.png",
  attributions:'© OpenStreetMap contributors',
@@ -50,14 +92,17 @@ const base=new ol.layer.Tile({source:new ol.source.XYZ({
  maxZoom:19
 })});
 const map=new ol.Map({
- target:"map",layers:[base,vector],
+ target:"map",layers:[base,accuracyVector,vector],
  view:new ol.View({center:ol.proj.fromLonLat([120.62,24.15]),zoom:8.2,minZoom:7,maxZoom:18,constrainResolution:false}),
  controls:ol.control.defaults.defaults({rotate:false,zoom:true,attribution:true}),
  interactions:ol.interaction.defaults.defaults({mouseWheelZoom:true,pinchZoom:true,dragPan:true})
 });
+
+// 景點資訊彈窗
 const el=document.getElementById("popup");
 const overlay=new ol.Overlay({element:el,positioning:"bottom-center",stopEvent:true,autoPan:{animation:{duration:180},margin:60}});
 map.addOverlay(overlay);
+
 function show(f){
  const p=f.getProperties(); document.getElementById("pn").textContent=p.name;
  document.getElementById("pm").textContent=p.city+" · "+p.type;
@@ -65,12 +110,13 @@ function show(f){
  document.getElementById("plink").href="https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(p.q);
  overlay.setPosition(f.getGeometry().getCoordinates()); el.style.display="block";
 }
-map.on("singleclick",e=>{const f=map.forEachFeatureAtPixel(e.pixel,x=>x,{hitTolerance:8}); if(f)show(f); else{el.style.display="none";overlay.setPosition(undefined)}});
-map.on("pointermove",e=>{map.getTargetElement().style.cursor=map.hasFeatureAtPixel(e.pixel,{hitTolerance:5})?"pointer":""});
+map.on("singleclick",e=>{const f=map.forEachFeatureAtPixel(e.pixel,x=>x,{hitTolerance:8,layerFilter:l=>l===vector}); if(f)show(f); else{el.style.display="none";overlay.setPosition(undefined)}});
+map.on("pointermove",e=>{map.getTargetElement().style.cursor=map.hasFeatureAtPixel(e.pixel,{hitTolerance:5,layerFilter:l=>l===vector})?"pointer":""});
 document.getElementById("close").onclick=()=>{el.style.display="none";overlay.setPosition(undefined)};
+
+// 分類篩選
 const types=["全部",...new Set(places.map(x=>x.type))];
 const filters=document.getElementById("filters");
-
 function styleFor(type){
   return new ol.style.Style({
     image:new ol.style.Circle({
@@ -80,7 +126,6 @@ function styleFor(type){
     })
   });
 }
-
 types.forEach((t,i)=>{
   const b=document.createElement("button");
   b.textContent=t;
@@ -97,4 +142,88 @@ types.forEach((t,i)=>{
   });
   filters.appendChild(b);
 });
-</script></body></html>
+
+// 當前位置 Overlay 與 Geolocation 設定
+const locEl=document.getElementById("userLocationOverlay");
+const locOverlay=new ol.Overlay({
+  element:locEl,
+  positioning:"center-center",
+  stopEvent:false
+});
+map.addOverlay(locOverlay);
+
+locEl.addEventListener("click",()=>{
+  document.getElementById("pn").textContent="📍 我的目前位置";
+  document.getElementById("pm").textContent="即時 GPS 定位";
+  document.getElementById("pd").textContent="點擊右下角定位按鈕可重新定位或移至中心。";
+  const pos=geolocation.getPosition();
+  if(pos){
+    const lonLat=ol.proj.toLonLat(pos);
+    document.getElementById("plink").href=`https://www.google.com/maps/search/?api=1&query=${lonLat[1].toFixed(5)},${lonLat[0].toFixed(5)}`;
+    overlay.setPosition(pos);
+    el.style.display="block";
+  }
+});
+
+const geolocation=new ol.Geolocation({
+  trackingOptions:{enableHighAccuracy:true,timeout:10000},
+  projection:map.getView().getProjection()
+});
+
+let firstTracking=true;
+const locateBtn=document.getElementById("locateBtn");
+
+function updateLocationDisplay(){
+  const pos=geolocation.getPosition();
+  if(!pos) return;
+  locOverlay.setPosition(pos);
+  locEl.style.display="block";
+
+  // 更新精度圈
+  accuracySource.clear();
+  const accGeo=geolocation.getAccuracyGeometry();
+  if(accGeo){
+    accuracySource.addFeature(new ol.Feature(accGeo));
+  }
+
+  if(firstTracking){
+    map.getView().animate({center:pos,zoom:13,duration:800});
+    firstTracking=false;
+  }
+}
+
+geolocation.on("change:position",updateLocationDisplay);
+geolocation.on("change:accuracyGeometry",()=>{
+  const accGeo=geolocation.getAccuracyGeometry();
+  if(accGeo && locEl.style.display!=="none"){
+    accuracySource.clear();
+    accuracySource.addFeature(new ol.Feature(accGeo));
+  }
+});
+
+geolocation.on("error",err=>{
+  alert("無法取得您的位置："+(err.message||"請確認是否允許瀏覽器存取位置權限"));
+  locateBtn.classList.remove("active");
+});
+
+locateBtn.addEventListener("click",()=>{
+  if(!geolocation.getTracking()){
+    firstTracking=true;
+    geolocation.setTracking(true);
+    locateBtn.classList.add("active");
+  }else{
+    const pos=geolocation.getPosition();
+    if(pos){
+      map.getView().animate({center:pos,zoom:14,duration:600});
+    }
+  }
+});
+
+// 頁面載入時自動嘗試定位一次
+if(navigator.geolocation){
+  geolocation.setTracking(true);
+  locateBtn.classList.add("active");
+}
+</script>
+</body>
+</html>
