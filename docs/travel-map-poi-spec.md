@@ -22,3 +22,13 @@
 
 - 本次只更新靜態地圖資料與互動介面，不引入框架、後端或新套件。
 - 營業時間與活動資訊屬於出發前需再次確認的旅遊資料；介面會明確標示提醒。
+
+## Data contract
+
+`places.json` is a versioned JSON array. Each item must include:
+
+- `name`, `city`, `desc`, `type`: display and filter fields
+- `lon`, `lat`: WGS84 coordinates used by OpenLayers
+- `q`: Google Maps search query
+
+Detailed travel entries may additionally include `intro`, `address`, `hours`, and `officialUrl`. The HTML files load this file from the same directory through `fetch("./places.json")`.
