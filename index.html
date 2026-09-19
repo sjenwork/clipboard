@@ -61,7 +61,7 @@ body{overflow:hidden;background:#eef2f5}
 <body>
 <div id="map"></div>
 <div class="topbar"><div class="title">新竹 → 嘉義｜這週末景點</div><div class="sub">2026/9/19–9/20 · 點標記看資訊，再開 Google Maps 研究路線</div><div class="filters" id="filters"></div></div>
-<div class="legend">拖曳・慣性縮放・雙指縮放｜OpenLayers</div>
+<div class="legend">拖曳・縮放看地圖｜放大後顯示景點名稱</div>
 
 <!-- 定位按鈕 -->
 <button class="locate-btn" id="locateBtn" title="定位當前位置" aria-label="定位當前位置">
@@ -95,13 +95,30 @@ const palette={"本週活動":"#e53935","單車":"#1976d2","單車/風景":"#197
 async function loadPlaces(){
   const response=await fetch("./places.json");
   if(!response.ok) throw new Error("places.json 載入失敗（HTTP "+response.status+"）");
-  places=await response.json();
+places=await response.json();
+const labelResolution=180;
+function placeStyle(p,resolution){
+ const showLabel=resolution<=labelResolution;
+ return new ol.style.Style({
+   image:new ol.style.Circle({radius:9,fill:new ol.style.Fill({color:palette[p.type]||"#333"}),stroke:new ol.style.Stroke({color:"#fff",width:3})}),
+   text:showLabel?new ol.style.Text({
+     text:p.name,
+     font:'600 12px system-ui,-apple-system,"Noto Sans TC",sans-serif',
+     offsetY:-19,
+     padding:[3,5,3,5],
+     backgroundFill:new ol.style.Fill({color:"rgba(255,255,255,.92)"}),
+     backgroundStroke:new ol.style.Stroke({color:"rgba(30,41,59,.16)",width:1}),
+     fill:new ol.style.Fill({color:"#1e293b"}),
+     stroke:new ol.style.Stroke({color:"#fff",width:3}),
+     overflow:false
+   }):undefined
+ });
+}
 const source=new ol.source.Vector();
 function makeFeature(p){
  const f=new ol.Feature({geometry:new ol.geom.Point(ol.proj.fromLonLat([p.lon,p.lat])),...p});
- f.setStyle(new ol.style.Style({
-   image:new ol.style.Circle({radius:9,fill:new ol.style.Fill({color:palette[p.type]||"#333"}),stroke:new ol.style.Stroke({color:"#fff",width:3})})
- })); return f;
+ f.setStyle((feature,resolution)=>placeStyle(feature.getProperties(),resolution));
+ return f;
 }
 places.forEach(p=>source.addFeature(makeFeature(p)));
 const vector=new ol.layer.Vector({source,declutter:true});
@@ -170,15 +187,6 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape" && travelModal.class
 // 分類篩選
 const types=["全部",...new Set(places.map(x=>x.type))];
 const filters=document.getElementById("filters");
-function styleFor(type){
-  return new ol.style.Style({
-    image:new ol.style.Circle({
-      radius:9,
-      fill:new ol.style.Fill({color:palette[type]||"#333"}),
-      stroke:new ol.style.Stroke({color:"#fff",width:3})
-    })
-  });
-}
 types.forEach((t,i)=>{
   const b=document.createElement("button");
   b.textContent=t;
@@ -188,7 +196,7 @@ types.forEach((t,i)=>{
     b.classList.add("active");
     source.getFeatures().forEach(f=>{
       const visible=(t==="全部" || f.get("type")===t);
-      f.setStyle(visible ? styleFor(f.get("type")) : new ol.style.Style({}));
+      f.setStyle(visible ? (feature,resolution)=>placeStyle(feature.getProperties(),resolution) : new ol.style.Style({}));
     });
     el.style.display="none";
     overlay.setPosition(undefined);
