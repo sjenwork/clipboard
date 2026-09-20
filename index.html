@@ -91,7 +91,7 @@ body{overflow:hidden;background:#eef2f5}
 
 <script>
 let places=[];
-const palette={"本週活動":"#e53935","單車":"#1976d2","單車/風景":"#1976d2","風景":"#2e7d32","景點":"#6a1b9a","嘉義晚上":"#ef6c00","美食":"#c2410c","咖啡":"#5d4037"};
+const palette={"本週活動":"#e53935","單車":"#1976d2","單車/風景":"#1976d2","風景":"#2e7d32","生態":"#16805b","步道":"#2f6f45","景點":"#6a1b9a","人文":"#8a4b18","嘉義晚上":"#ef6c00","美食":"#c2410c","咖啡":"#5d4037"};
 async function loadPlaces(){
   const response=await fetch("./places.json");
   if(!response.ok) throw new Error("places.json 載入失敗（HTTP "+response.status+"）");
