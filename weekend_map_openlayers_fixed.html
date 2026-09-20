@@ -13,8 +13,9 @@ body{overflow:hidden;background:#eef2f5}
 .topbar{position:absolute;z-index:10;top:12px;left:50%;transform:translateX(-50%);width:min(720px,calc(100% - 24px));background:rgba(255,255,255,.94);backdrop-filter:blur(12px);border-radius:16px;padding:10px 12px;box-shadow:0 5px 20px #0002;box-sizing:border-box}
 .title{font-weight:800;font-size:16px} .sub{font-size:12px;color:#555;margin-top:2px}
 .filters{display:flex;gap:6px;overflow:auto;margin-top:8px;scrollbar-width:none} .filters::-webkit-scrollbar{display:none}
-.filters button{white-space:nowrap;border:0;border-radius:999px;padding:7px 10px;background:#edf0f3;font-weight:650;cursor:pointer}
+.filters button{white-space:nowrap;border:0;border-radius:999px;padding:7px 10px;background:#edf0f3;font-weight:650;cursor:pointer;transition:background .15s ease,color .15s ease,box-shadow .15s ease}
 .filters button.active{background:#222;color:#fff}
+.filters button:focus-visible{outline:3px solid #8db7ff;outline-offset:2px}
 .popup{position:absolute;background:white;border-radius:14px;box-shadow:0 6px 25px #0003;padding:13px;width:min(300px,calc(100vw - 42px));transform:translate(-50%,-100%);margin-top:-13px;display:none;z-index:20}
 .popup:after{content:"";position:absolute;left:50%;bottom:-8px;border:8px solid transparent;border-top-color:white;border-bottom:0}
 .popup b{display:block;font-size:15px;line-height:1.35;padding-right:20px} .popup .meta{font-size:12px;color:#666;margin:5px 0} .popup .desc{font-size:13px;line-height:1.45}
@@ -187,19 +188,35 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape" && travelModal.class
 // 分類篩選
 const types=["全部",...new Set(places.map(x=>x.type))];
 const filters=document.getElementById("filters");
+const selectedTypes=new Set();
+function isPlaceVisible(type){
+  return selectedTypes.size===0 || selectedTypes.has(type);
+}
+function refreshFilterState(){
+  Array.from(filters.children).forEach(button=>{
+    const type=button.dataset.type;
+    const active=type==="全部" ? selectedTypes.size===0 : selectedTypes.has(type);
+    button.classList.toggle("active",active);
+    button.setAttribute("aria-pressed",String(active));
+  });
+  source.getFeatures().forEach(f=>{
+    f.setStyle(isPlaceVisible(f.get("type")) ? (feature,resolution)=>placeStyle(feature.getProperties(),resolution) : new ol.style.Style({}));
+  });
+  el.style.display="none";
+  overlay.setPosition(undefined);
+}
 types.forEach((t,i)=>{
   const b=document.createElement("button");
   b.textContent=t;
-  if(i===0) b.classList.add("active");
+  b.dataset.type=t;
+  b.type="button";
+  b.setAttribute("aria-pressed",String(i===0));
+  b.setAttribute("aria-label",t==="全部"?"顯示全部景點":"切換顯示"+t+"類景點");
   b.addEventListener("click",()=>{
-    Array.from(filters.children).forEach(x=>x.classList.remove("active"));
-    b.classList.add("active");
-    source.getFeatures().forEach(f=>{
-      const visible=(t==="全部" || f.get("type")===t);
-      f.setStyle(visible ? (feature,resolution)=>placeStyle(feature.getProperties(),resolution) : new ol.style.Style({}));
-    });
-    el.style.display="none";
-    overlay.setPosition(undefined);
+    if(t==="全部") selectedTypes.clear();
+    else if(selectedTypes.has(t)) selectedTypes.delete(t);
+    else selectedTypes.add(t);
+    refreshFilterState();
   });
   filters.appendChild(b);
 });
